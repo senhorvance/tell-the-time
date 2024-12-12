@@ -1,5 +1,22 @@
 var canvas;
 var graphics;
+var userTimeZoneOffset = new Date().getTimezoneOffset(); // Default offset in minutes
+
+// Function to fetch timezone from IP
+async function fetchTimeZone() {
+    try {
+        const response = await fetch('https://ipapi.co/json/');
+        const data = await response.json();
+        if (data && data.timezone) {
+            userTimeZoneOffset = new Date().toLocaleString('en-US', { timeZone: data.timezone }).getTimezoneOffset();
+            console.log(`User timezone detected: ${data.timezone}`);
+        } else {
+            console.log('Timezone not detected, using local time zone.');
+        }
+    } catch (error) {
+        console.error('Error fetching timezone:', error);
+    }
+}
 
 // draws a black line segment
 function Blackline (x1, y1, x2, y2) {
@@ -16,7 +33,7 @@ function Blackline (x1, y1, x2, y2) {
     graphics.restore();
 }
 
-// this function is merely a tweek of the one provided above: draws a red line segment
+// this function is merely a tweak of the one provided above: draws a red line segment
 function Redline (x1, y1, x2, y2) {
     // Save the current graphics state.
     graphics.save();
@@ -58,7 +75,6 @@ function drawCircle(radius, centerX, centerY, numPoints) {
         } else {
             graphics.lineTo(x, y);
         }
-        
     }
 
     // Connect the last point to the first point to close the path, creating a closed circle.
@@ -71,38 +87,25 @@ function drawCircle(radius, centerX, centerY, numPoints) {
     graphics.restore();
 }
 
-
 function grid () {
     // Save the current graphics state.
     graphics.save();
 
     for (let index = 60; index < 600; index+=60) {
-        
-        //start by checking if line being drawn is middle line...
-        if (index==300) {
-
-            //drawing vertical lines from left to right
+        if (index == 300) {
+            // Drawing vertical and horizontal red lines at center
             Redline(index, 0, index, 600);
-
-            //drawing horizontal lines from top to bottom
             Redline(0, index, 600, index);
-
-        }else{
-
-            //drawing vertical lines from left to right
+        } else {
+            // Drawing black lines
             Blackline(index, 0, index, 600);
-
-            //drawing horizontal lines from top to bottom
             Blackline(0, index, 600, index);
-
         }
-
     }
 
     // Restore the graphics state to its original state.
     graphics.restore();
 }
-
 
 function drawTics(centerX, centerY, numPoints, radius, lengthFactor) {
     // Save the current graphics state.
@@ -121,11 +124,10 @@ function drawTics(centerX, centerY, numPoints, radius, lengthFactor) {
             // Calculate the length of the hour tic.
             var hourLength = radius * lengthFactor * 2;
 
-            // Calculate coordinates for the inner end of the hour tic.
+            // Calculate coordinates for the inner and outer ends of the hour tic.
             var x1 = centerX + ((radius - hourLength) - (radius * lengthFactor)) * Math.cos(theta);
             var y1 = centerY + ((radius - hourLength) - (radius * lengthFactor)) * Math.sin(theta);
 
-            // Calculate coordinates for the outer end of the hour tic.
             var x2 = centerX + ((radius - hourLength) + (radius * lengthFactor)) * Math.cos(theta);
             var y2 = centerY + ((radius - hourLength) + (radius * lengthFactor)) * Math.sin(theta);
 
@@ -136,23 +138,20 @@ function drawTics(centerX, centerY, numPoints, radius, lengthFactor) {
         // Calculate the length of the minute tic.
         var minuteLength = radius * lengthFactor / 2;
 
-        // Calculate coordinates for the inner end of the minute tic.
+        // Calculate coordinates for the inner and outer ends of the minute tic.
         var x3 = centerX + (radius - minuteLength) * Math.cos(theta);
         var y3 = centerY + (radius - minuteLength) * Math.sin(theta);
 
-        // Calculate coordinates for the outer end of the minute tic.
         var x4 = centerX + radius * Math.cos(theta);
         var y4 = centerY + radius * Math.sin(theta);
 
         // Draw a shorter black line for the minute tic.
         Blackline(x3, y3, x4, y4);
-        
     }
 
     // Restore the graphics state to its original state.
     graphics.restore();
 }
-
 
 function drawHand(centerX, centerY, length, angle, color) {
     // Save the current graphics state.
@@ -184,8 +183,6 @@ function drawHand(centerX, centerY, length, angle, color) {
     graphics.restore();
 }
 
-
-
 function drawClock(centerX, centerY, radius) {
     // Save the current graphics state.
     graphics.save();
@@ -202,8 +199,6 @@ function drawClock(centerX, centerY, radius) {
     graphics.restore();
 }
 
-
-
 function animateClock() {
     // Save the current graphics state.
     graphics.save();
@@ -211,8 +206,8 @@ function animateClock() {
     // Clear the canvas to prepare for drawing the clock.
     graphics.clearRect(0, 0, canvas.width, canvas.height);
     
-    // Get the current date and time.
-    var d = new Date();
+    // Get the current date and time in the user's timezone.
+    var d = new Date(new Date().getTime() + userTimeZoneOffset * 60000);
 
     // Calculate the angles for the clock hands based on the current time.
     var milliseconds = d.getMilliseconds();
@@ -244,28 +239,20 @@ function animateClock() {
     graphics.restore();
 }
 
-
 function updateDateTime() {
-    // Get the current date and time.
-    let d = new Date();
+    // Get the current date and time in the user's timezone.
+    let d = new Date(new Date().getTime() + userTimeZoneOffset * 60000);
 
     // Update the content of the HTML paragraph element with the current date and time.
     document.getElementById("paragraph").innerHTML = d;
 }
 
-
 function init () {
     canvas = document.getElementById("myCanvas");
     graphics = canvas.getContext("2d");
 
-    // Call the grid function to construct the 10x10 grid on the canvas
-    grid();
-
-    // Then draw the circle of radius 240 centered in the middle of the canvas
-    drawCircle(240, 300, 300, 100);
-
-    // Add the 'tics' for hours and minutes
-    drawTics(300, 300, 60, 240, 0.05);
+    // Fetch the user's timezone
+    fetchTimeZone();
 
     // Set up the animation loop
     requestAnimationFrame(animateClock);
