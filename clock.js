@@ -2,14 +2,23 @@ var canvas;
 var graphics;
 var userTimeZoneOffset = new Date().getTimezoneOffset(); // Default offset in minutes
 
-// Function to fetch timezone from IP
 async function fetchTimeZone() {
     try {
         const response = await fetch('https://ipapi.co/json/');
         const data = await response.json();
         if (data && data.timezone) {
-            userTimeZoneOffset = new Date().toLocaleString('en-US', { timeZone: data.timezone }).getTimezoneOffset();
+            // Store both timezone name and offset
+            window.detectedTimezone = data.timezone;
+            
+            // Create a date in the detected timezone
+            const tzDate = new Date().toLocaleString('en-US', { timeZone: data.timezone });
+            const detectedDate = new Date(tzDate);
+            
+            // Update the timezone offset
+            userTimeZoneOffset = -detectedDate.getTimezoneOffset();
+            
             console.log(`User timezone detected: ${data.timezone}`);
+            console.log(`Timezone offset: ${userTimeZoneOffset}`);
         } else {
             console.log('Timezone not detected, using local time zone.');
         }
@@ -17,6 +26,7 @@ async function fetchTimeZone() {
         console.error('Error fetching timezone:', error);
     }
 }
+
 
 // draws a black line segment
 function Blackline (x1, y1, x2, y2) {
@@ -206,8 +216,13 @@ function animateClock() {
     // Clear the canvas to prepare for drawing the clock.
     graphics.clearRect(0, 0, canvas.width, canvas.height);
     
-    // Get the current date and time in the user's timezone.
-    var d = new Date(new Date().getTime() + userTimeZoneOffset * 60000);
+    // Get the current date and time in the user's timezone
+    let d;
+    if (window.detectedTimezone) {
+        d = new Date(new Date().toLocaleString('en-US', { timeZone: window.detectedTimezone }));
+    } else {
+        d = new Date(new Date().getTime() + (userTimeZoneOffset * 60000));
+    }
 
     // Calculate the angles for the clock hands based on the current time.
     var milliseconds = d.getMilliseconds();
@@ -240,19 +255,35 @@ function animateClock() {
 }
 
 function updateDateTime() {
-    // Get the current date and time in the user's timezone.
-    let d = new Date(new Date().getTime() + userTimeZoneOffset * 60000);
+    // Use the detected timezone if available
+    let d;
+    if (window.detectedTimezone) {
+        d = new Date().toLocaleString('en-US', { 
+            timeZone: window.detectedTimezone,
+            hour12: false,
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+        });
+    } else {
+        // Fallback to using offset method if no timezone detected
+        d = new Date(new Date().getTime() + (userTimeZoneOffset * 60000));
+    }
 
     // Update the content of the HTML paragraph element with the current date and time.
     document.getElementById("paragraph").innerHTML = d;
 }
 
-function init () {
+// Initialize the clock application
+async function init() {
     canvas = document.getElementById("myCanvas");
     graphics = canvas.getContext("2d");
 
-    // Fetch the user's timezone
-    fetchTimeZone();
+    // Await timezone fetching
+    await fetchTimeZone();
 
     // Set up the animation loop
     requestAnimationFrame(animateClock);
@@ -262,3 +293,4 @@ function init () {
         updateDateTime();
     }, 1000);
 }
+
