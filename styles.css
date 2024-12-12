@@ -1,0 +1,14 @@
+*{
+    font-family: 'Inter', sans-serif;
+}
+
+#myCanvas {
+    border:1px solid #d3d3d3;
+    margin-right: auto;
+    margin-left: auto;
+    display: block;
+}
+
+h1, h2, p {
+    display: flex;
+    justify-content: center;
