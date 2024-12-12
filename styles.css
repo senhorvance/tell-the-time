@@ -1,14 +1,41 @@
-*{
+html{
+    zoom: 90%;
+}
+* {
     font-family: 'Inter', sans-serif;
 }
 
-#myCanvas {
-    border:1px solid #d3d3d3;
-    margin-right: auto;
-    margin-left: auto;
-    display: block;
+body {
+    background-color: #f4f4f4;
+    color: #333;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    margin: 0;
 }
 
-h1, h2, p {
-    display: flex;
-    justify-content: center;
+h2 {
+    font-size: 36px;
+    color: #333;
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+#myCanvas {
+    border: 10px solid #333;
+    border-radius: 50%;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    display: block;
+    margin: 20px auto;
+    background-color: #fff;
+}
+
+p {
+    font-size: 24px;
+    font-weight: bold;
+    color: #333;
+    text-align: center;
+    margin-top: 20px;
+}
