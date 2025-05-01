@@ -1,29 +1,267 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-
-    <!--meta declarations and links...-->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="stylesheet" href="styles.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200&display=swap" rel="stylesheet">
-    <title> Tell Time </title>
-    <script src="clock.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;400;700&display=swap" rel="stylesheet">
+    <title>Enhanced Canvas Clock</title>
+    <style>
+        * {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .clock-container {
+            text-align: center;
+            max-width: 700px;
+            width: 100%;
+        }
+
+        h2 {
+            font-size: 2.5rem;
+            color: #2d3436;
+            margin-bottom: 1.5rem;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        #myCanvas {
+            border: 12px solid #2d3436;
+            border-radius: 50%;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.2), inset 0 0 10px rgba(0,0,0,0.1);
+            background: radial-gradient(circle, #ffffff 0%, #f1f3f5 100%);
+            max-width: 100%;
+            height: auto;
+        }
+
+        .digital-time {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #2d3436;
+            margin-top: 1.5rem;
+            background: rgba(255,255,255,0.9);
+            padding: 0.75rem 1.5rem;
+            border-radius: 25px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .digital-time:hover {
+            transform: scale(1.05);
+            box-shadow: 0 6px 15px rgba(0,0,0,0.15);
+        }
+
+        @media (max-width: 600px) {
+            h2 {
+                font-size: 1.8rem;
+            }
+            .digital-time {
+                font-size: 1.2rem;
+            }
+            #myCanvas {
+                width: 100%;
+                max-width: 400px;
+            }
+        }
+    </style>
 </head>
+<body>
+    <div class="clock-container">
+        <canvas id="myCanvas" width="600" height="600">
+            Your browser does not support the HTML5 canvas tag.
+        </canvas>
+        <p class="digital-time" id="digitalTime">Time will appear here</p>
+    </div>
 
-<body onload="init()">
+    <script>
+        const canvas = document.getElementById("myCanvas");
+        const ctx = canvas.getContext("2d");
+        let userTimeZoneOffset = new Date().getTimezoneOffset();
+        let detectedTimezone = null;
 
-    <h2>Javascript Canvas Clock</h2>
-    <p id="paragraph">Time will appear here if working correctly.</p>
+        async function fetchTimeZone() {
+            try {
+                const response = await fetch('https://ipapi.co/json/');
+                const data = await response.json();
+                if (data?.timezone) {
+                    detectedTimezone = data.timezone;
+                    const tzDate = new Date().toLocaleString('en-US', { timeZone: data.timezone });
+                    userTimeZoneOffset = -new Date(tzDate).getTimezoneOffset();
+                }
+            } catch (error) {
+                console.error('Error fetching timezone:', error);
+            }
+        }
 
-    <!--the html5 canvas tag begins here-->
-    <canvas id="myCanvas" width="600" height="600">
-        Your browser does not support the HTML5 canvas tag.
-    </canvas>
-    <!--the html5 canvas tag ends here-->
+        function drawCircle(radius, centerX, centerY) {
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+            
+            const gradient = ctx.createRadialGradient(
+                centerX, centerY, radius * 0.1,
+                centerX, centerY, radius
+            );
+            gradient.addColorStop(0, '#ffffff');
+            gradient.addColorStop(1, '#e9ecef');
+            ctx.fillStyle = gradient;
+            ctx.fill();
+            
+            ctx.strokeStyle = '#2d3436';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            ctx.restore();
+        }
 
+        function drawNumbers(centerX, centerY, radius) {
+            ctx.save();
+            ctx.font = `${radius * 0.1}px Inter`;
+            ctx.fillStyle = '#2d3436';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            
+            for (let i = 1; i <= 12; i++) {
+                const angle = (i * 30 - 90) * Math.PI / 180;
+                const x = centerX + (radius * 0.70) * Math.cos(angle);
+                const y = centerY + (radius * 0.70) * Math.sin(angle);
+                ctx.fillText(i.toString(), x, y);
+            }
+            ctx.restore();
+        }
+
+        function drawTics(centerX, centerY, radius) {
+            ctx.save();
+            for (let i = 0; i < 60; i++) {
+                const angle = (i * 6) * Math.PI / 180;
+                const isHour = i % 5 === 0;
+                const length = isHour ? radius * 0.1 : radius * 0.05;
+                
+                const x1 = centerX + (radius * 0.9) * Math.cos(angle);
+                const y1 = centerY + (radius * 0.9) * Math.sin(angle);
+                const x2 = centerX + (radius * (isHour ? 0.8 : 0.85)) * Math.cos(angle);
+                const y2 = centerY + (radius * (isHour ? 0.8 : 0.85)) * Math.sin(angle);
+
+                ctx.beginPath();
+                ctx.moveTo(x1, y1);
+                ctx.lineTo(x2, y2);
+                ctx.strokeStyle = '#2d3436';
+                ctx.lineWidth = isHour ? 3 : 1;
+                ctx.stroke();
+            }
+            ctx.restore();
+        }
+
+        function drawHand(centerX, centerY, length, angle, width, color) {
+            ctx.save();
+            const theta = (angle - 90) * Math.PI / 180;
+            
+            // Enhanced shadow for better depth
+            ctx.shadowColor = 'rgba(0,0,0,0.4)';
+            ctx.shadowBlur = 8;
+            ctx.shadowOffsetX = 3;
+            ctx.shadowOffsetY = 3;
+
+            ctx.beginPath();
+            ctx.moveTo(centerX, centerY);
+            ctx.lineTo(
+                centerX + length * Math.cos(theta),
+                centerY + length * Math.sin(theta)
+            );
+            ctx.strokeStyle = color;
+            ctx.lineWidth = width;
+            ctx.lineCap = 'round';
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        function drawCenterDot(centerX, centerY, radius) {
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+            ctx.fillStyle = '#2d3436';
+            ctx.fill();
+            ctx.restore();
+        }
+
+        function animateClock() {
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            const radius = Math.min(canvas.width, canvas.height) * 0.4;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            const d = detectedTimezone 
+                ? new Date(new Date().toLocaleString('en-US', { timeZone: detectedTimezone }))
+                : new Date(new Date().getTime() + (userTimeZoneOffset * 60000));
+
+            const milliseconds = d.getMilliseconds();
+            const seconds = d.getSeconds() + milliseconds / 1000;
+            const minutes = d.getMinutes() + seconds / 60;
+            const hours = d.getHours() % 12 + minutes / 60;
+
+            drawCircle(radius, centerX, centerY);
+            drawNumbers(centerX, centerY, radius);
+            drawTics(centerX, centerY, radius);
+            
+            drawHand(centerX, centerY, radius * 0.5, (360 / 12) * hours, 8, '#2d3436');
+            drawHand(centerX, centerY, radius * 0.7, (360 / 60) * minutes, 5, '#2d3436');
+            drawHand(centerX, centerY, radius * 0.8, (360 / 60) * seconds, 2, '#e03131');
+            drawCenterDot(centerX, centerY, radius * 0.03);
+
+            requestAnimationFrame(animateClock);
+        }
+
+        function updateDigitalTime() {
+            const d = detectedTimezone 
+                ? new Date().toLocaleString('en-US', { 
+                    timeZone: detectedTimezone,
+                    hour12: true,
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit'
+                })
+                : new Date(new Date().getTime() + (userTimeZoneOffset * 60000))
+                    .toLocaleTimeString('en-US', {
+                        hour12: true,
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit'
+                    });
+
+            document.getElementById("digitalTime").textContent = d;
+        }
+
+        function resizeCanvas() {
+            const container = document.querySelector('.clock-container');
+            const size = Math.min(container.offsetWidth * 0.95, window.innerHeight * 0.7);
+            if (Math.abs(canvas.width - size) > 1) { // Prevent unnecessary redraws
+                canvas.width = size;
+                canvas.height = size;
+            }
+        }
+
+        async function init() {
+            await fetchTimeZone();
+            window.addEventListener('resize', resizeCanvas);
+            resizeCanvas();
+            requestAnimationFrame(animateClock);
+            setInterval(updateDigitalTime, 1000);
+        }
+
+        window.onload = init;
+    </script>
 </body>
 </html>
